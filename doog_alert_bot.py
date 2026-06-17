@@ -37,23 +37,24 @@ NTFY_PRIORITY = "high"
 # apr_delta    : alerte si APR a perdu X points vs ton entrée
 # lever        : ton levier (utilisé pour calculer la distance de liquidation)
 POSITIONS = [
+    # ── Exemple Hyperliquid ──────────────────────────────────
     {
         "coin":         "BTC",
         "protocol":     "Hyperliquid",
-        "apr_entry":    19.0,
+        "apr_entry":    19.0,   # APR au moment de ton entrée en position
+        "apr_min_abs":  10.0,   # Alerte si APR live descend sous 10%
+        "apr_delta":    7.0,    # Alerte si APR perd 7 points vs entrée
+        "lever":        1.0,    # Ton levier (1x = pas de levier)
+    },
+    # ── Exemple dYdX ────────────────────────────────────────
+    {
+        "coin":         "ETH",
+        "protocol":     "dYdX",
+        "apr_entry":    15.0,
         "apr_min_abs":  10.0,
         "apr_delta":    7.0,
         "lever":        1.0,
     },
-    # Exemple deuxième position :
-    # {
-    #     "coin":        "ETH",
-    #     "protocol":    "Hyperliquid",
-    #     "apr_entry":   35.0,
-    #     "apr_min_abs": 10.0,
-    #     "apr_delta":   7.0,
-    #     "lever":       2.0,
-    # },
 ]
 
 # ── Seuils de variation sur 12h ───────────────────────────────
@@ -91,22 +92,29 @@ def mark_alerted(key: str):
 
 
 # ── ntfy ─────────────────────────────────────────────────────
+def strip_emoji(text: str) -> str:
+    """Supprime les emojis pour les headers HTTP (latin-1 uniquement)."""
+    return text.encode('ascii', 'ignore').decode('ascii').strip()
+
 def send_ntfy(title: str, message: str, priority: str = NTFY_PRIORITY, tags: str = ""):
     """Envoie une notification push via ntfy.sh."""
     try:
         headers = {
-            "Title":    title,
-            "Priority": priority,
-            "Tags":     tags,
+            "Title":        strip_emoji(title),   # headers = ASCII uniquement
+            "Priority":     priority,
+            "Tags":         tags,
+            "Content-Type": "text/plain; charset=utf-8",
         }
+        # Le body contient le titre complet avec emojis + le message
+        body = f"{title}\n\n{message}"
         r = requests.post(
             f"https://ntfy.sh/{NTFY_TOPIC}",
-            data=message.encode("utf-8"),
+            data=body.encode("utf-8"),
             headers=headers,
             timeout=10
         )
         if r.status_code == 200:
-            print(f"[{now_str()}] ✅ ntfy envoyé : {title}")
+            print(f"[{now_str()}] ✅ ntfy envoyé : {strip_emoji(title)}")
         else:
             print(f"[{now_str()}] ❌ ntfy erreur {r.status_code} : {r.text}")
     except Exception as e:
