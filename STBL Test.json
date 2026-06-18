@@ -1,0 +1,12 @@
+[
+  {
+    "coin": "STBL",
+    "protocol": "Hyperliquid",
+    "apr_entry": 160.89,
+    "apr_min_abs": 8,
+    "apr_delta": 7,
+    "lever": 1,
+    "price_change_pct": 4,
+    "price_window_h": 24
+  }
+]
