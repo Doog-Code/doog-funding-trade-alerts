@@ -1,12 +1,12 @@
 [
   {
-    "coin": "HYPE",
+    "coin": "SOL",
     "protocol": "Hyperliquid",
     "apr_entry": 10.95,
     "apr_min_abs": 8,
     "apr_delta": 7,
     "lever": 1,
-    "price_change_pct": 4,
+    "price_change_pct": 3,
     "price_window_h": 24
   }
 ]
