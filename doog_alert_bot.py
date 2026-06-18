@@ -25,7 +25,7 @@ from collections import defaultdict
 
 # Ton topic ntfy — choisis un nom unique (ex: doog-funding-alerts-x7k2)
 # Plus il est unique, moins il y a de chances que quelqu'un tombe dessus
-NTFY_TOPIC = "doog-funding-alerts-z4g7"
+NTFY_TOPIC = "doog-funding-alerts-CHANGE-MOI"
 
 # Priorité des notifications ntfy : low / default / high / urgent
 NTFY_PRIORITY = "high"
@@ -312,17 +312,23 @@ def main():
         print("❌ ERREUR : Remplace NTFY_TOPIC par ton topic unique dans la config.")
         return
 
-    # Notification de démarrage
+    if not POSITIONS:
+        print("⚠️  Aucune position dans positions.json — le bot tourne mais ne surveille rien.")
+        print("   → Exporte positions.json depuis le Funding Trade Scanner et uploade-le sur GitHub.")
+
+    # Notification de démarrage avec détail des positions
+    pos_lines = "\n".join(
+        f"• {p['coin']} / {p['protocol']} (entrée {p['apr_entry']}%)"
+        for p in POSITIONS
+    ) if POSITIONS else "Aucune position configurée"
+
     send_ntfy(
         title   = "✅ Doog Alert Bot démarré",
-        message = (f"Positions : {', '.join(p['coin'] for p in POSITIONS)}\n"
-                   f"Vérification toutes les {CHECK_INTERVAL_SECONDS // 60} min\n"
-                   f"Fenêtre d'analyse : {WINDOW_HOURS}h"),
+        message = (f"{pos_lines}\n\n"
+                   f"Vérification toutes les {CHECK_INTERVAL_SECONDS // 60} min"),
         tags    = "white_check_mark"
     )
 
-    # Note : les alertes de variation 12h ne se déclencheront qu'après
-    # 12h de fonctionnement (le temps de constituer l'historique)
     print(f"[{now_str()}] ℹ️  Les alertes de variation de prix démarreront après "
           f"la fenêtre configurée par position (12h ou 24h) de collecte.\n")
 
