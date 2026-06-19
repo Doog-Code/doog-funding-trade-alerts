@@ -7,6 +7,7 @@
     "apr_delta": 7,
     "lever": 5,
     "price_change_pct": 7,
-    "price_window_h": 24
+    "price_window_h": 24,
+    "liq_price": 91
   }
 ]
