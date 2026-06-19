@@ -25,7 +25,7 @@ from collections import defaultdict
 
 # Ton topic ntfy — choisis un nom unique (ex: doog-funding-alerts-x7k2)
 # Plus il est unique, moins il y a de chances que quelqu'un tombe dessus
-NTFY_TOPIC = "doog-funding-alerts-CHANGE-MOI"
+NTFY_TOPIC = "doog-funding-alerts-z4g7"
 
 # Priorité des notifications ntfy : low / default / high / urgent
 NTFY_PRIORITY = "high"
