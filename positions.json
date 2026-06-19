@@ -8,15 +8,5 @@
     "lever": 5,
     "price_change_pct": 7,
     "price_window_h": 24
-  },
-  {
-    "coin": "AERO",
-    "protocol": "Hyperliquid",
-    "apr_entry": 106,
-    "apr_min_abs": 20,
-    "apr_delta": 80,
-    "lever": 3,
-    "price_change_pct": 6,
-    "price_window_h": 24
   }
 ]
