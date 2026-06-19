@@ -2,11 +2,11 @@
   {
     "coin": "HYPE",
     "protocol": "Hyperliquid",
-    "apr_entry": 25.47,
-    "apr_min_abs": 8,
+    "apr_entry": 10.95,
+    "apr_min_abs": 7,
     "apr_delta": 7,
     "lever": 5,
-    "price_change_pct": 3,
+    "price_change_pct": 7,
     "price_window_h": 24
   }
 ]
