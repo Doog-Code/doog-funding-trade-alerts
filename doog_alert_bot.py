@@ -185,8 +185,10 @@ def check_position(pos: dict, hl: dict, dy: dict):
     min_abs   = pos["apr_min_abs"]
     delta     = pos["apr_delta"]
     lever     = pos.get("lever", 1.0)
-    price_pct = pos.get("price_change_pct", 3.0)   # seuil variation prix
-    price_win = pos.get("price_window_h", 24)       # fenêtre en heures
+    price_pct = pos.get("price_change_pct", 3.0)
+    price_win = pos.get("price_window_h", 24)
+    liq_price_real = pos.get("liq_price")
+    entry_price    = pos.get("entry_price")   # Prix d'entrée spot
     key       = f"{coin}_{protocol}"
 
     source = hl if protocol == "Hyperliquid" else dy
@@ -199,7 +201,15 @@ def check_position(pos: dict, hl: dict, dy: dict):
     apr_live = market["apr"]
     price    = market["price"]
 
-    print(f"[{now_str()}] {key} — APR: {apr_live:.2f}% | Prix: ${price:,.4f}")
+    # Calcul PnL si prix d'entrée renseigné
+    pnl_line = ""
+    if entry_price and float(entry_price) > 0:
+        ep       = float(entry_price)
+        pnl_pct  = ((price - ep) / ep) * 100
+        pnl_sign = "+" if pnl_pct >= 0 else ""
+        pnl_line = f"PnL spot vs entrée (${ep:,.4f}) : {pnl_sign}{pnl_pct:.2f}%\n"
+
+    print(f"[{now_str()}] {key} — APR: {apr_live:.2f}% | Prix: ${price:,.4f}{' | ' + pnl_line.strip() if pnl_line else ''}")
 
     # Enregistre dans l'historique
     record_history(key, apr_live, price)
@@ -263,8 +273,9 @@ def check_position(pos: dict, hl: dict, dy: dict):
                         title    = f"🔴 PRIX EN FORTE HAUSSE — {coin} +{price_change:.1f}%/{price_win}h",
                         message  = (f"Prix il y a {price_win}h : ${price_ref:,.4f}\n"
                                     f"Prix maintenant : ${price:,.4f}\n"
-                                    f"Hausse : +{price_change:.1f}% (seuil : +{price_pct}%)\n\n"
-                                    f"Ton short se rapproche de la liquidation.\n"
+                                    f"Hausse : +{price_change:.1f}% (seuil : +{price_pct}%)\n"
+                                    f"{pnl_line}"
+                                    f"\nTon short se rapproche de la liquidation.\n"
                                     f"Vérifie ta marge sur {protocol} immédiatement."),
                         priority = "urgent",
                         tags     = "rotating_light,arrow_up"
@@ -274,8 +285,9 @@ def check_position(pos: dict, hl: dict, dy: dict):
                         title    = f"🔵 PRIX EN BAISSE — {coin} {price_change:.1f}%/{price_win}h",
                         message  = (f"Prix il y a {price_win}h : ${price_ref:,.4f}\n"
                                     f"Prix maintenant : ${price:,.4f}\n"
-                                    f"Baisse : {price_change:.1f}% (seuil : -{price_pct}%)\n\n"
-                                    f"Info : ton short compense la perte du spot.\n"
+                                    f"Baisse : {price_change:.1f}% (seuil : -{price_pct}%)\n"
+                                    f"{pnl_line}"
+                                    f"\nTon short compense la perte du spot.\n"
                                     f"Position delta-neutral maintenue."),
                         priority = "low",
                         tags     = "arrow_down"
