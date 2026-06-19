@@ -25,7 +25,7 @@ from collections import defaultdict
 
 # Ton topic ntfy — choisis un nom unique (ex: doog-funding-alerts-x7k2)
 # Plus il est unique, moins il y a de chances que quelqu'un tombe dessus
-NTFY_TOPIC = "doog-funding-alerts-z4g7"
+NTFY_TOPIC = "doog-funding-alerts-CHANGE-MOI"
 
 # Priorité des notifications ntfy : low / default / high / urgent
 NTFY_PRIORITY = "high"
@@ -52,7 +52,7 @@ if os.path.exists(_POSITIONS_FILE):
         print(f"❌ Erreur lecture positions.json : {_e}")
 
 # ── Seuils de variation sur 12h ───────────────────────────────
-PRICE_CHANGE_THRESHOLD_PCT  = 5.0   # Alerte si prix ±5% sur 12h
+PRICE_CHANGE_THRESHOLD_PCT  = 3.0   # Alerte si prix ±3% sur 24h
 APR_CHANGE_THRESHOLD_PTS    = 15.0  # Alerte si APR varie de ±15 pts sur 12h
 WINDOW_HOURS                = 12    # Fenêtre de comparaison
 
@@ -185,7 +185,7 @@ def check_position(pos: dict, hl: dict, dy: dict):
     min_abs   = pos["apr_min_abs"]
     delta     = pos["apr_delta"]
     lever     = pos.get("lever", 1.0)
-    price_pct = pos.get("price_change_pct", 4.0)   # seuil variation prix
+    price_pct = pos.get("price_change_pct", 3.0)   # seuil variation prix
     price_win = pos.get("price_window_h", 24)       # fenêtre en heures
     key       = f"{coin}_{protocol}"
 
@@ -283,20 +283,38 @@ def check_position(pos: dict, hl: dict, dy: dict):
                 mark_alerted(k4)
 
     # ── Alerte 5 : Liquidation proche ────────────────────────
-    liq_dist = (1 / lever) * 100 * 0.85
     k5 = f"{key}_liq"
-    if liq_dist < 20.0 and can_alert(k5):
-        liq_price = price * (1 + liq_dist / 100) if price > 0 else None
-        liq_line  = f"Prix de liquidation : ${liq_price:,.4f}" if liq_price else ""
-        send_ntfy(
-            title    = f"🚨 LIQUIDATION PROCHE — {coin}/{protocol}",
-            message  = (f"Distance de liquidation : {liq_dist:.1f}%\n"
-                        f"{liq_line}\n\n"
-                        f"🚨 Rajoute de la marge ou ferme la position !"),
-            priority = "urgent",
-            tags     = "rotating_light,rotating_light"
-        )
-        mark_alerted(k5)
+    liq_price_real = pos.get("liq_price")  # Prix réel depuis positions.json
+
+    if liq_price_real and float(liq_price_real) > 0 and price > 0:
+        # Utilise le prix de liquidation réel saisi dans le Scanner
+        liq_real = float(liq_price_real)
+        distance_pct = ((liq_real - price) / price) * 100
+        if 0 < distance_pct < 10.0 and can_alert(k5):
+            send_ntfy(
+                title    = f"🚨 LIQUIDATION PROCHE — {coin}/{protocol}",
+                message  = (f"Prix actuel : ${price:,.4f}\n"
+                            f"Prix de liquidation : ${liq_real:,.4f}\n"
+                            f"Distance restante : {distance_pct:.1f}%\n\n"
+                            f"Rajoute de la marge ou ferme la position immédiatement."),
+                priority = "urgent",
+                tags     = "rotating_light,rotating_light"
+            )
+            mark_alerted(k5)
+    else:
+        # Fallback approximatif si prix de liquidation non renseigné
+        liq_dist = (1 / lever) * 100 * 0.85
+        if liq_dist < 20.0 and can_alert(k5):
+            send_ntfy(
+                title    = f"🚨 LIQUIDATION PROCHE — {coin}/{protocol}",
+                message  = (f"Distance estimée : {liq_dist:.1f}%\n"
+                            f"Prix actuel : ${price:,.4f}\n\n"
+                            f"Renseigne le prix de liquidation réel dans\n"
+                            f"l'onglet Surveiller pour plus de précision."),
+                priority = "urgent",
+                tags     = "rotating_light"
+            )
+            mark_alerted(k5)
 
 
 # ── Boucle principale ─────────────────────────────────────────
