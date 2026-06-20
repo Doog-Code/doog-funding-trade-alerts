@@ -72,6 +72,12 @@ history = defaultdict(list)
 alert_memory = {}
 ALERT_COOLDOWN = 1800  # secondes
 
+# ── Confirmation sur 2 cycles consécutifs ────────────────────
+# Évite les faux positifs sur des pics momentanés.
+# L'alerte ne se déclenche que si la condition est vraie
+# lors de DEUX vérifications successives (soit ~10 minutes).
+pending_alerts = {}  # { key: timestamp_premier_déclenchement }
+
 
 def now_str() -> str:
     return datetime.now().strftime("%H:%M:%S")
@@ -79,6 +85,27 @@ def now_str() -> str:
 
 def can_alert(key: str) -> bool:
     return (time.time() - alert_memory.get(key, 0)) > ALERT_COOLDOWN
+
+
+def confirm_alert(key: str) -> bool:
+    """Retourne True uniquement si la condition est vraie depuis 2 cycles (~10 min).
+    Premier cycle : mémorise. Deuxième cycle : confirme et retourne True."""
+    now = time.time()
+    if key not in pending_alerts:
+        pending_alerts[key] = now
+        print(f"[{now_str()}] ⏳ Alerte en attente confirmation : {key}")
+        return False
+    elif (now - pending_alerts[key]) >= CHECK_INTERVAL_SECONDS:
+        # Confirmé sur 2 cycles
+        del pending_alerts[key]
+        return True
+    return False
+
+
+def reset_pending(key: str):
+    """Annule la confirmation en attente si la condition n'est plus vraie."""
+    if key in pending_alerts:
+        del pending_alerts[key]
 
 
 def mark_alerted(key: str):
@@ -216,32 +243,38 @@ def check_position(pos: dict, hl: dict, dy: dict):
 
     # ── Alerte 1 : APR sous seuil absolu ─────────────────────
     k1 = f"{key}_apr_abs"
-    if apr_live < min_abs and can_alert(k1):
-        send_ntfy(
-            title    = f"🔴 APR BAS — {coin}/{protocol}",
-            message  = (f"APR live : {apr_live:.2f}%\n"
-                        f"Seuil minimum : {min_abs}%\n\n"
-                        f"Envisage de fermer la position."),
-            priority = "urgent",
-            tags     = "rotating_light"
-        )
-        mark_alerted(k1)
+    if apr_live < min_abs:
+        if can_alert(k1) and confirm_alert(k1):
+            send_ntfy(
+                title    = f"🔴 APR BAS — {coin}/{protocol}",
+                message  = (f"APR live : {apr_live:.2f}%\n"
+                            f"Seuil minimum : {min_abs}%\n\n"
+                            f"Envisage de fermer la position."),
+                priority = "urgent",
+                tags     = "rotating_light"
+            )
+            mark_alerted(k1)
+    else:
+        reset_pending(k1)
 
     # ── Alerte 2 : APR a perdu X points vs entrée ────────────
     k2      = f"{key}_apr_delta"
     seuil_d = entry - delta
-    if apr_live < seuil_d and can_alert(k2):
-        drop = entry - apr_live
-        send_ntfy(
-            title    = f"🟠 CHUTE APR — {coin}/{protocol}",
-            message  = (f"APR entrée : {entry:.2f}%\n"
-                        f"APR live : {apr_live:.2f}%\n"
-                        f"Chute : -{drop:.1f} pts (seuil : -{delta} pts)\n\n"
-                        f"Le funding rate s'est dégradé."),
-            priority = "high",
-            tags     = "warning"
-        )
-        mark_alerted(k2)
+    if apr_live < seuil_d:
+        if can_alert(k2) and confirm_alert(k2):
+            drop = entry - apr_live
+            send_ntfy(
+                title    = f"🟠 CHUTE APR — {coin}/{protocol}",
+                message  = (f"APR entrée : {entry:.2f}%\n"
+                            f"APR live : {apr_live:.2f}%\n"
+                            f"Chute : -{drop:.1f} pts (seuil : -{delta} pts)\n\n"
+                            f"Le funding rate s'est dégradé."),
+                priority = "high",
+                tags     = "warning"
+            )
+            mark_alerted(k2)
+    else:
+        reset_pending(k2)
 
     # ── Alerte 3 : Variation APR sur fenêtre ─────────────────
     ref = get_reference(key, price_win)
