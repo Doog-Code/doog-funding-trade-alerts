@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "coin": "BTC",
+    "protocol": "dYdX",
+    "apr_entry": 20.3,
+    "apr_min_abs": 8,
+    "apr_delta": 7,
+    "lever": 1,
+    "price_change_pct": 3,
+    "price_window_h": 24,
+    "liq_price": 72000,
+    "entry_price": 65000
+  }
+]
